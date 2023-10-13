@@ -1,0 +1,117 @@
+000100 IDENTIFICATION DIVISION.                                         00001000
+000200 PROGRAM-ID.   READCBL2.                                          00002000
+000300 AUTHOR. COLE DOMBROWSKI.                                         00003000
+000400                                                                  00004000
+000500 ENVIRONMENT DIVISION.                                            00005000
+000600 INPUT-OUTPUT SECTION.                                            00006000
+000700 FILE-CONTROL.
+                                                                        00007000
+000800      SELECT VENDOR-INPUT-FILE ASSIGN TO UT-S-VENDIN.             00008000
+001000                                                                  00010000
+001100      SELECT VENDOR-OUTPUT-FILE ASSIGN TO UT-S-VENDOUT.           00011000
+001300                                                                  00013000
+001400 DATA DIVISION.                                                   00014000
+001500 FILE SECTION.                                                    00015000
+001600 FD  VENDOR-INPUT-FILE RECORDING MODE IS F.                       00016000
+001700 01                            PICTURE X(80).
+                                                                        00017000
+001800 FD  VENDOR-OUTPUT-FILE RECORDING MODE IS F.                      00018000
+001900 01  PRINT-A-SINGLE-LINE       PICTURE X(132).
+                                                                        00019000
+002100 WORKING-STORAGE SECTION.                                         00021000
+002200 01  WORKING-VARIABLES.                                           00022000
+002300     05  EOF-VENDOR-WS          PICTURE X(3)     VALUE 'NO'.          0002
+002500     05  TOTAL-RECORDS-WS       PICTURE 999      VALUE ZERO.          0002
+002600     05  TOTAL-DOLLARS-WS       PICTURE S9(8)V99 VALUE ZERO.          0002
+002700                                                                  00027000
+003200 01  VENDOR-INPUT-RECORD.                                         00032000
+003300     05  STORE-NUM-IN            PICTURE X(4).                        0003
+003400     05  VENDOR-NUM-IN           PICTURE X(5).                        0003
+003500     05  COMPANY-DATA-IN         PICTURE X(20).                       0003
+003800     05  TRANS-DATE-IN           PICTURE X(8).                        0003
+003700     05  FILLER                  PICTURE X(12).                       0003
+003600     05  DOL-AMOUNT-IN           PICTURE S9(6)V99.                    0003
+003900     05  NAME-IN                 PICTURE X(23).                       0003
+004000                                                                  00040000
+004100****************************************************************  00041000
+004200*THE INDIVIDUAL FIELDS TO BE PRINTED ON EACH LINE ARE SPECIFIED   00042000
+004300*BELOW. NOTE THAT THE DOL-AMOUNT-OUT FIELD IS EDITED.             00043000
+004400****************************************************************  00044000
+004500 01  DETAILED-OUTPUT-LINE-SETUP.                                  00045000
+004700     05                          PICTURE X(11) VALUE SPACE.           0004
+004800     05  TRANS-DATE-OUT          PICTURE XX/XX/XXXX.                  0004
+004900     05                          PICTURE X(5) VALUE SPACE.            0004
+005000     05  VENDOR-NUM-OUT          PICTURE 9(5).                        0005
+005100     05                          PICTURE X(5)  VALUE SPACE.           0005
+005200     05  DOL-AMOUNT-OUT          PICTURE $$,$$$,$$9.99BCR.            0005
+005300                                                                  00053000
+005400 01  TOTAL-RECORDS-LINE-SETUP.                                    00054000
+005500      05  FILLER                  PICTURE X.                          0005
+005600      05                          PICTURE X(5)   VALUE SPACE.         0005
+005700      05                          PICTURE X(35)  VALUE                0005
+005800      'NUMBER OF RECORDS PROCESSED IS:'.                          00058000
+005900      05  TOTAL-RECORDS-OUT        PICTURE ZZZ9.                      0005
+006000                                                                  00060000
+006100                                                                  00061000
+006200 01  TOTAL-DOLLARS-LINE-SETUP.                                    00062000
+006300      05  FILLER                  PICTURE X.                          0006
+006400      05                          PICTURE X(5)   VALUE SPACE.         0006
+006500      05                          PICTURE X(35)  VALUE                0006
+006600      'TOTAL NET DOLLAR AMOUNT IS:'.                              00066000
+006700      05  TOTAL-DOLLARS-OUT       PICTURE $$$$,$$$,$$9.99BCR.         0006
+006800                                                                  00068000
+006900 PROCEDURE DIVISION.                                              00069000
+007000                                                                  00070000
+007100 100-MAINLINE.                                                    00071000
+007200     PERFORM 200-OPEN                                             00072000
+007300     PERFORM 300-PROCESS UNTIL EOF-VENDOR-WS = 'YES'              00073000
+007400     PERFORM 900-CLOSE                                            00074000
+007500     STOP RUN.                                                    00075000
+007700                                                                  00077000
+007800 200-OPEN.                                                        00078000
+007900     OPEN INPUT VENDOR-INPUT-FILE OUTPUT VENDOR-OUTPUT-FILE       00079000
+008000     PERFORM 250-READ-ONE-RECORD.                                 00080000
+008100                                                                  00081000
+008200                                                                  00082000
+008300 250-READ-ONE-RECORD.                                             00083000
+008400     READ VENDOR-INPUT-FILE INTO  VENDOR-INPUT-RECORD             00084000
+008500        AT END MOVE 'YES' TO EOF-VENDOR-WS                        00085000
+008700     END-READ.                                                    00087000
+008800                                                                  00088000
+008900****************************************************************  00089000
+009000*300-PROCESS  IS THE SECTION THAT IS PERFORMED REPEATEDLY         00090000
+009100*FROM THE 100-MAINLINE. IT PERFORMS A BLOCK OF CODE MOVING DATA   00091000
+009200*TO THE DETAIL LINE FOR PRINTING. IT THEN PERFORMS THE CODE       00092000
+009300*THAT READS THE NEXT RECORD FOR PROCESSING. IT CONTINUES TO DO    00093000
+009400*THIS UNTIL AN END OF FILE STATUS (NO MORE DATA) IS RETURNED.     00094000
+009500*AT THIS POINT THE END OF DATA FLAG IS SET WHICH CAUSES THE       00095000
+009600*300-PROCESS SECTION TO END.                                      00096000
+009700****************************************************************  00097000
+009900                                                                  00099000
+010000 300-PROCESS.                                                     00100000
+010200     MOVE  TRANS-DATE-IN    TO  TRANS-DATE-OUT                    00102000
+010300     MOVE  VENDOR-NUM-IN    TO  VENDOR-NUM-OUT                    00103000
+010400     MOVE  DOL-AMOUNT-IN    TO  DOL-AMOUNT-OUT                    00104000
+010500                                                                  00105000
+010600* ACCUMULATE THE TOTAL DOLLARS AND THE TOTAL RECORDS              00106000
+010800     ADD   1               TO  TOTAL-RECORDS-WS                   00108000
+010900     ADD   DOL-AMOUNT-IN   TO  TOTAL-DOLLARS-WS                   00109000
+011000                                                                  00110000
+011100     MOVE  DETAILED-OUTPUT-LINE-SETUP TO PRINT-A-SINGLE-LINE
+           WRITE PRINT-A-SINGLE-LINE AFTER ADVANCING 1 LINE             00111000
+011200                                                                  00112000
+011300     PERFORM 250-READ-ONE-RECORD.                                 00113000
+011400                                                                  00114000
+
+012100 900-CLOSE.                                                       00121000
+012200     MOVE  TOTAL-RECORDS-WS TO TOTAL-RECORDS-OUT
+           MOVE  TOTAL-DOLLARS-WS TO TOTAL-DOLLARS-OUT
+
+           MOVE  TOTAL-RECORDS-LINE-SETUP TO  PRINT-A-SINGLE-LINE       00122000
+012300     WRITE PRINT-A-SINGLE-LINE AFTER 3 LINES                      00123000
+012400                                                                  00124000
+012500
+           MOVE  TOTAL-DOLLARS-LINE-SETUP  TO   PRINT-A-SINGLE-LINE     00125000
+012600     WRITE PRINT-A-SINGLE-LINE AFTER 1 LINE                       00126000
+012700                                                                  00127000
+012800     CLOSE  VENDOR-INPUT-FILE  VENDOR-OUTPUT-FILE.                00128000
